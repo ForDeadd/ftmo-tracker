@@ -1,5 +1,6 @@
-// Composant principal avec objectifs dynamiques selon les jours
+// FTMO Tracker connecté à Supabase - App.tsx
 import React, { useEffect, useState } from 'react'
+import { supabase } from './supabaseClient'
 
 interface TradeDay {
   day: number
@@ -95,22 +96,27 @@ const TableSection = ({ title, days, onChange, progress }: {
 )
 
 export default function App() {
-  const [phase1, setPhase1] = useState<TradeDay[]>(() => {
-    const saved = localStorage.getItem('phase1')
-    return saved ? JSON.parse(saved) : createPhase1()
-  })
-
-  const [phase2, setPhase2] = useState<TradeDay[]>(() => {
-    const saved = localStorage.getItem('phase2')
-    return saved ? JSON.parse(saved) : createPhase2()
-  })
+  const [phase1, setPhase1] = useState<TradeDay[]>([])
+  const [phase2, setPhase2] = useState<TradeDay[]>([])
 
   useEffect(() => {
-    localStorage.setItem('phase1', JSON.stringify(phase1))
+    async function fetchData() {
+      const { data: p1 } = await supabase.from('tracker').select('data').eq('phase', 'phase1').single()
+      const { data: p2 } = await supabase.from('tracker').select('data').eq('phase', 'phase2').single()
+      setPhase1(p1?.data || createPhase1())
+      setPhase2(p2?.data || createPhase2())
+    }
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    if (phase1.length)
+      supabase.from('tracker').upsert([{ phase: 'phase1', data: phase1 }], { onConflict: 'phase' })
   }, [phase1])
 
   useEffect(() => {
-    localStorage.setItem('phase2', JSON.stringify(phase2))
+    if (phase2.length)
+      supabase.from('tracker').upsert([{ phase: 'phase2', data: phase2 }], { onConflict: 'phase' })
   }, [phase2])
 
   const handleChange = (setFn: React.Dispatch<React.SetStateAction<TradeDay[]>>, list: TradeDay[], index: number, value: number) => {
