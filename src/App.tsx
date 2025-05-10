@@ -1,4 +1,4 @@
-// FTMO Tracker connecté à Supabase - App.tsx
+// App.tsx responsive, mobile-friendly
 import React, { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
@@ -40,7 +40,7 @@ const createPhase2 = (): TradeDay[] => [
 ]
 
 const ProgressBar = ({ percent }: { percent: number }) => (
-  <div className="w-full bg-gray-800 h-4 rounded-full overflow-hidden">
+  <div className="w-full bg-gray-800 dark:bg-gray-300 h-4 rounded-full overflow-hidden">
     <div
       className="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-300"
       style={{ width: `${percent}%` }}
@@ -54,55 +54,56 @@ const TableSection = ({ title, days, onChange, progress }: {
   onChange: (index: number, value: number) => void
   progress: number
 }) => (
-  <div className="bg-gray-800 rounded-2xl p-6 shadow-lg mb-10">
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-semibold">{title}</h2>
+  <div className="bg-gray-800 dark:bg-gray-100 text-white dark:text-black rounded-2xl p-6 shadow-lg mb-10 overflow-x-auto">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <h2 className="text-2xl font-semibold mb-4 sm:mb-0">{title}</h2>
       <div className="text-right">
-        <p className="text-sm text-gray-400 mb-1">Progression</p>
+        <p className="text-sm text-gray-400 dark:text-gray-600 mb-1">Progression</p>
         <p className="text-xl font-bold text-green-400">{progress.toFixed(1)}%</p>
         <ProgressBar percent={progress} />
       </div>
     </div>
-    <div className="overflow-x-auto">
-      <table className="min-w-full table-auto border-collapse">
-        <thead>
-          <tr className="bg-gray-700 text-left">
-            <th className="p-3 text-sm font-medium text-gray-300">Jour</th>
-            <th className="p-3 text-sm font-medium text-gray-300">Montant Réalisé</th>
-            <th className="p-3 text-sm font-medium text-gray-300">Objectif</th>
-            <th className="p-3 text-sm font-medium text-gray-300">%</th>
+    <table className="min-w-full table-auto border-collapse">
+      <thead>
+        <tr className="bg-gray-700 dark:bg-gray-300 text-left">
+          <th className="p-2 text-sm font-medium text-gray-300 dark:text-black">Jour</th>
+          <th className="p-2 text-sm font-medium text-gray-300 dark:text-black">Montant</th>
+          <th className="p-2 text-sm font-medium text-gray-300 dark:text-black">Objectif</th>
+          <th className="p-2 text-sm font-medium text-gray-300 dark:text-black">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {days.map((d, i) => (
+          <tr key={i} className="bg-gray-900 dark:bg-white border-b border-gray-700 hover:bg-gray-800">
+            <td className="p-2 whitespace-nowrap">Jour {d.day} ({d.label})</td>
+            <td className="p-2">
+              <input
+                type="number"
+                value={d.achieved}
+                onChange={e => onChange(i, Number(e.target.value))}
+                className="bg-gray-800 dark:bg-gray-200 text-white dark:text-black p-2 rounded w-full max-w-[90px] text-center border border-gray-700 focus:outline-none"
+              />
+            </td>
+            <td className="p-2 whitespace-nowrap">{d.target}€</td>
+            <td className="p-2 whitespace-nowrap">{((d.achieved / d.target) * 100).toFixed(1)}%</td>
           </tr>
-        </thead>
-        <tbody>
-          {days.map((d, i) => (
-            <tr key={i} className="bg-gray-900 border-b border-gray-700 hover:bg-gray-800">
-              <td className="p-3">Jour {d.day} ({d.label})</td>
-              <td className="p-3">
-                <input
-                  type="number"
-                  value={d.achieved}
-                  onChange={e => onChange(i, Number(e.target.value))}
-                  className="bg-gray-800 text-white p-2 rounded w-28 text-center border border-gray-700 focus:outline-none"
-                />
-              </td>
-              <td className="p-3">{d.target}€</td>
-              <td className="p-3">{((d.achieved / d.target) * 100).toFixed(1)}%</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   </div>
 )
 
 export default function App() {
   const [phase1, setPhase1] = useState<TradeDay[]>([])
   const [phase2, setPhase2] = useState<TradeDay[]>([])
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('dark') === 'true'
+  })
 
   useEffect(() => {
     async function fetchData() {
-      const { data: p1 } = await supabase.from('tracker').select('data').eq('phase', 'phase1').single()
-      const { data: p2 } = await supabase.from('tracker').select('data').eq('phase', 'phase2').single()
+      const { data: p1 } = await supabase.from('tracker').select('*').eq('phase', 'phase1').single()
+      const { data: p2 } = await supabase.from('tracker').select('*').eq('phase', 'phase2').single()
       setPhase1(p1?.data || createPhase1())
       setPhase2(p2?.data || createPhase2())
     }
@@ -119,11 +120,12 @@ export default function App() {
       supabase.from('tracker').upsert([{ phase: 'phase2', data: phase2 }], { onConflict: 'phase' })
   }, [phase2])
 
-  const handleChange = (setFn: React.Dispatch<React.SetStateAction<TradeDay[]>>, list: TradeDay[], index: number, value: number) => {
-    const updated = [...list]
-    updated[index].achieved = value
-    setFn(updated)
-  }
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode)
+    localStorage.setItem('dark', darkMode.toString())
+  }, [darkMode])
+
+  const toggleDarkMode = () => setDarkMode(!darkMode)
 
   const calculateProgress = (list: TradeDay[]) => {
     const totalAchieved = list.reduce((acc, d) => acc + d.achieved, 0)
@@ -136,27 +138,43 @@ export default function App() {
   const phase2Progress = calculateProgress(phase2)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black text-white font-sans flex">
-      <div className="w-64 fixed top-0 left-0 h-full bg-gray-950 p-6 shadow-2xl z-50">
-        <h2 className="text-lg font-bold mb-4">Progression Globale</h2>
-        <p className="text-3xl text-cyan-400 font-bold mb-2">{globalProgress.toFixed(1)}%</p>
-        <ProgressBar percent={globalProgress} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black dark:from-white dark:to-gray-200 text-white dark:text-black font-sans flex flex-col md:flex-row">
+      <div className="w-full md:w-64 fixed md:relative top-0 left-0 h-auto md:h-full bg-gray-950 dark:bg-gray-100 p-4 md:p-6 shadow-2xl z-50 flex flex-col justify-between">
+        <div>
+          <h2 className="text-lg font-bold mb-4">Progression Globale</h2>
+          <p className="text-3xl text-cyan-400 font-bold mb-2">{globalProgress.toFixed(1)}%</p>
+          <ProgressBar percent={globalProgress} />
+        </div>
+        <button
+          onClick={toggleDarkMode}
+          className="mt-6 text-sm px-3 py-2 rounded bg-gray-800 dark:bg-gray-300 text-white dark:text-black hover:opacity-80 transition"
+        >
+          {darkMode ? '🌞 Mode Jour' : '🌙 Mode Nuit'}
+        </button>
       </div>
 
-      <div className="ml-64 flex-1 p-10">
-        <h1 className="text-5xl font-extrabold mb-12 text-center text-green-400 drop-shadow">FTMO Tracker</h1>
+      <div className="flex-1 p-4 md:p-10 mt-44 md:mt-0">
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-8 text-center text-green-400 drop-shadow">FTMO Tracker</h1>
 
         <TableSection
           title="Phase 1"
           days={phase1}
-          onChange={(i, v) => handleChange(setPhase1, phase1, i, v)}
+          onChange={(i, v) => {
+            const updated = [...phase1];
+            updated[i].achieved = v;
+            setPhase1(updated);
+          }}
           progress={phase1Progress}
         />
 
         <TableSection
           title="Phase 2"
           days={phase2}
-          onChange={(i, v) => handleChange(setPhase2, phase2, i, v)}
+          onChange={(i, v) => {
+            const updated = [...phase2];
+            updated[i].achieved = v;
+            setPhase2(updated);
+          }}
           progress={phase2Progress}
         />
       </div>
